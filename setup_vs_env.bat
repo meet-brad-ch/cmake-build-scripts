@@ -3,7 +3,7 @@ REM ============================================================================
 REM Generic Visual Studio Environment Setup for Windows
 REM ============================================================================
 REM Auto-detects and initializes the MSVC compiler environment
-REM Supports Visual Studio 2022 (Community, Professional, Enterprise)
+REM Supports Visual Studio 2026 and 2022 (Community, Professional, Enterprise, BuildTools)
 REM Works with any CMake-based project - just place in a 'tools' subdirectory
 REM
 REM Usage:
@@ -17,9 +17,19 @@ REM ============================================================================
 
 echo [setup_vs_env] Detecting Visual Studio installation...
 
-REM Try Visual Studio 2022 (Community, Professional, Enterprise)
+REM Try Visual Studio 2026 (version directory "18"), then 2022.
+REM Editions include BuildTools, which installs under the same layout.
 set VS_PATH=
-for %%e in (Community Professional Enterprise) do (
+for %%e in (Community Professional Enterprise BuildTools) do (
+    if exist "C:\Program Files\Microsoft Visual Studio\18\%%e\VC\Auxiliary\Build\vcvarsall.bat" (
+        set VS_PATH=C:\Program Files\Microsoft Visual Studio\18\%%e\VC\Auxiliary\Build\vcvarsall.bat
+        set VS_VERSION=2026
+        set VS_EDITION=%%e
+        set VS_GENERATOR=Visual Studio 18 2026
+        goto :found
+    )
+)
+for %%e in (Community Professional Enterprise BuildTools) do (
     if exist "C:\Program Files\Microsoft Visual Studio\2022\%%e\VC\Auxiliary\Build\vcvarsall.bat" (
         set VS_PATH=C:\Program Files\Microsoft Visual Studio\2022\%%e\VC\Auxiliary\Build\vcvarsall.bat
         set VS_VERSION=2022
@@ -35,10 +45,10 @@ echo ============================================
 echo [setup_vs_env] ERROR: Visual Studio Not Found
 echo ============================================
 echo.
-echo Visual Studio 2022 is required to build this project.
+echo Visual Studio 2026 or 2022 with the C++ workload is required.
 echo.
 echo Installation Instructions:
-echo   1. Download Visual Studio 2022 Community (FREE):
+echo   1. Download Visual Studio Community (FREE):
 echo      https://visualstudio.microsoft.com/downloads/
 echo.
 echo   2. During installation, select:
@@ -46,10 +56,11 @@ echo      [X] Desktop development with C++
 echo.
 echo   3. After installation, run this script again
 echo.
-echo Supported editions: Community, Professional, Enterprise
-echo Required version: 2022
+echo Supported editions: Community, Professional, Enterprise, BuildTools
+echo Supported versions: 2026, 2022
 echo.
-echo Searched location:
+echo Searched locations:
+echo   - C:\Program Files\Microsoft Visual Studio\18\
 echo   - C:\Program Files\Microsoft Visual Studio\2022\
 echo.
 echo ============================================

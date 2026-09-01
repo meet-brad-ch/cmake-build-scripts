@@ -1,20 +1,20 @@
 # cmake-build-scripts
 
-Generic CMake build wrapper scripts for Windows and Linux/macOS. Designed to be added as a git submodule to any CMake-based project.
+Generic CMake build wrapper scripts for Windows and Linux/macOS. Add them to any CMake-based project as a git submodule.
 
 ## Features
 
 - **Cross-platform**: Windows (batch) and Linux/macOS (bash) scripts
-- **Auto-detection**: Finds Visual Studio, Ninja, Make automatically
+- **Auto-detection**: Finds Visual Studio (2026 or 2022, any edition), Ninja, and Make
 - **Parallel builds**: Uses all available CPU cores
-- **CMake passthrough**: Forward custom flags to CMake with `--` syntax
-- **Zero configuration**: Works out-of-the-box with any CMake 3.20+ project
+- **CMake passthrough**: Forwards custom flags to CMake after `--`
+- **No configuration**: Works with any CMake 3.20+ project without setup
 
 ## Requirements
 
 | Platform | Requirements |
 |----------|-------------|
-| **Windows** | Visual Studio 2022, CMake 3.20+, Ninja (recommended) |
+| **Windows** | Visual Studio 2026 or 2022 (Community, Professional, Enterprise, or BuildTools), CMake 3.20+, Ninja (recommended) |
 | **Linux** | GCC 9+ or Clang 10+, CMake 3.20+, Ninja or Make |
 | **macOS** | Xcode Command Line Tools, CMake 3.20+, Ninja or Make |
 
@@ -24,7 +24,7 @@ Add as a git submodule to your project's `tools/` directory:
 
 ```bash
 cd your-project
-git submodule add https://github.com/yourname/cmake-build-scripts tools
+git submodule add https://github.com/meet-brad-ch/cmake-build-scripts tools
 git commit -m "Add cmake-build-scripts submodule"
 ```
 
@@ -38,13 +38,15 @@ git clone --recurse-submodules https://github.com/yourname/your-project
 
 ### Configure
 
-Generates build files in `build-<type>/` directory.
+Generates build files in the `build-<type>/` directory.
 
 **Windows:**
 ```batch
 cd tools
 configure.bat [Release|Debug] [Ninja|"Visual Studio"] [-- CMAKE_ARGS...]
 ```
+
+> **Note:** run the `.bat` scripts from `cmd.exe` or PowerShell, not from Git Bash. Git Bash invokes batch files through a bridge that leaves `%~dp0` empty. The scripts then cannot find their own directory.
 
 **Linux/macOS:**
 ```bash
@@ -69,7 +71,7 @@ cd tools
 
 ### Build
 
-Builds specified target(s).
+Builds the specified target.
 
 **Windows:**
 ```batch
