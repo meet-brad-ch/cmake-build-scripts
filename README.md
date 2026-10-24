@@ -1,5 +1,10 @@
 # cmake-build-scripts
 
+[![CI](https://github.com/meet-brad-ch/cmake-build-scripts/actions/workflows/ci.yml/badge.svg)](https://github.com/meet-brad-ch/cmake-build-scripts/actions/workflows/ci.yml)
+![CMake](https://img.shields.io/badge/CMake-3.20%2B-blue)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Generic CMake build wrapper scripts for Windows and Linux/macOS. Add them to any CMake-based project as a git submodule.
 
 ## Features

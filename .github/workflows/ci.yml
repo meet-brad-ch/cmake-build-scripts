@@ -1,0 +1,65 @@
+name: ci
+
+# Proves the scripts on a hello-world CMake project: the scripts are checked out into
+# demo/tools, as a project uses them, and the demo project is written by the job itself.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: demo/tools
+      - name: Write the demo project
+        run: |
+          cat > demo/CMakeLists.txt <<'CMAKE'
+          cmake_minimum_required(VERSION 3.20)
+          project(demo CXX)
+          add_executable(hello main.cpp)
+          CMAKE
+          printf '#include <cstdio>\nint main() { std::puts("hello"); return 0; }\n' > demo/main.cpp
+      - run: sudo apt-get install -y ninja-build
+      - run: ./configure.sh Release
+        working-directory: demo/tools
+      - run: ./build.sh all Release
+        working-directory: demo/tools
+      - run: ./demo/build-Release/hello
+      - run: ./configure.sh Debug -- -DCMAKE_VERBOSE_MAKEFILE=ON
+        working-directory: demo/tools
+      - run: ./build.sh hello Debug
+        working-directory: demo/tools
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: demo/tools
+      - name: Write the demo project
+        shell: bash
+        run: |
+          cat > demo/CMakeLists.txt <<'CMAKE'
+          cmake_minimum_required(VERSION 3.20)
+          project(demo CXX)
+          add_executable(hello main.cpp)
+          CMAKE
+          printf '#include <cstdio>\nint main() { std::puts("hello"); return 0; }\n' > demo/main.cpp
+      - run: configure.bat Release Ninja
+        shell: cmd
+        working-directory: demo/tools
+      - run: build.bat all Release
+        shell: cmd
+        working-directory: demo/tools
+      - run: demo\build-Release\hello.exe
+        shell: cmd
+      - run: configure.bat Debug "Visual Studio"
+        shell: cmd
+        working-directory: demo/tools
+      - run: build.bat hello Debug
+        shell: cmd
+        working-directory: demo/tools
