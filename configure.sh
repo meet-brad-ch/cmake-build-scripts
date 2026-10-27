@@ -3,12 +3,16 @@
 # Cross-platform configuration for Linux and macOS
 #
 # Usage:
-#   ./configure.sh [Release|Debug] [-- CMAKE_ARGS...]
+#   ./configure.sh [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]
 #
 # Examples:
 #   ./configure.sh                          # Configure Release build
 #   ./configure.sh Debug                    # Configure Debug build
 #   ./configure.sh Release -- -DFOO=ON      # Pass custom CMake flags
+#   ./configure.sh Release --dir tests -- -DBUILD_TESTS=ON   # Configure in build-tests
+#
+# --dir NAME uses the build directory build-NAME instead of build-<type>.
+# NAME contains only letters, digits, '_', '.' and '-'.
 #
 # This script automatically:
 #   - Configures build type (Release or Debug)
@@ -27,6 +31,7 @@ PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 # Parse arguments - extract build type and CMAKE_ARGS
 BUILD_TYPE="Release"
+DIR_NAME=""
 CMAKE_EXTRA_ARGS=""
 
 while [[ $# -gt 0 ]]; do
@@ -36,20 +41,37 @@ while [[ $# -gt 0 ]]; do
             CMAKE_EXTRA_ARGS="$@"
             break
             ;;
+        --dir)
+            if [[ $# -lt 2 || -z "$2" ]]; then
+                echo "Error: --dir needs a directory name"
+                exit 1
+            fi
+            DIR_NAME="$2"
+            shift 2
+            ;;
         Release|Debug)
             BUILD_TYPE="$1"
             shift
             ;;
         *)
             echo "Error: Unknown argument '$1'"
-            echo "Usage: $0 [Release|Debug] [-- CMAKE_ARGS...]"
+            echo "Usage: $0 [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]"
             exit 1
             ;;
     esac
 done
 
-# Build directory naming
+# Build directory naming. The script removes an existing build directory below,
+# so a --dir name must stay one directory below the project root.
 BUILD_DIR="$PROJECT_ROOT/build-$BUILD_TYPE"
+if [[ -n "$DIR_NAME" ]]; then
+    if [[ ! "$DIR_NAME" =~ ^[A-Za-z0-9_.-]+$ || "$DIR_NAME" == "." || "$DIR_NAME" == ".." ]]; then
+        echo "Error: Invalid --dir name '$DIR_NAME'"
+        echo "Use only letters, digits, '_', '.' and '-' (not '.' or '..')"
+        exit 1
+    fi
+    BUILD_DIR="$PROJECT_ROOT/build-$DIR_NAME"
+fi
 
 # ============================================================================
 # System Detection

@@ -43,12 +43,12 @@ git clone --recurse-submodules https://github.com/yourname/your-project
 
 ### Configure
 
-Generates build files in the `build-<type>/` directory.
+Generates build files in the `build-<type>/` directory, or in `build-NAME/` with `--dir NAME`.
 
 **Windows:**
 ```batch
 cd tools
-configure.bat [Release|Debug] [Ninja|"Visual Studio"] [-- CMAKE_ARGS...]
+configure.bat [Release|Debug] [Ninja|"Visual Studio"] [--dir NAME] [-- CMAKE_ARGS...]
 ```
 
 > **Note:** run the `.bat` scripts from `cmd.exe` or PowerShell, not from Git Bash. Git Bash invokes batch files through a bridge that leaves `%~dp0` empty. The scripts then cannot find their own directory.
@@ -56,7 +56,7 @@ configure.bat [Release|Debug] [Ninja|"Visual Studio"] [-- CMAKE_ARGS...]
 **Linux/macOS:**
 ```bash
 cd tools
-./configure.sh [Release|Debug] [-- CMAKE_ARGS...]
+./configure.sh [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]
 ```
 
 **Examples:**
@@ -72,7 +72,13 @@ cd tools
 # With custom CMake flags
 ./configure.bat Release Ninja -- -DBUILD_TESTS=OFF -DENABLE_GPU=ON
 ./configure.sh Release -- -DBUILD_TESTS=OFF
+
+# A second build directory, build-tests, next to build-Release
+./configure.bat Release Ninja --dir tests -- -DBUILD_TESTS=ON
+./configure.sh Release --dir tests -- -DBUILD_TESTS=ON
 ```
+
+`--dir NAME` gives one project several configured build directories, for example one with tests or with a sanitizer. NAME contains only letters, digits, `_`, `.` and `-`. The scripts refuse other names, because `configure.sh` removes an existing build directory before it configures.
 
 ### Build
 
@@ -81,13 +87,13 @@ Builds the specified target.
 **Windows:**
 ```batch
 cd tools
-build.bat <target> [Release|Debug] [jobs]
+build.bat <target> [Release|Debug] [jobs] [--dir NAME]
 ```
 
 **Linux/macOS:**
 ```bash
 cd tools
-./build.sh [target] [Release|Debug]
+./build.sh [target] [Release|Debug] [--dir NAME]
 ```
 
 **Examples:**
@@ -102,6 +108,10 @@ cd tools
 
 # Build with specific job count (Windows)
 ./build.bat all Release 8
+
+# Build in the build directory build-tests
+./build.bat MyTests Release --dir tests
+./build.sh MyTests Release --dir tests
 
 # Clean build artifacts
 ./build.bat clean
@@ -130,6 +140,7 @@ your-project/
 │   ├── bin/
 │   └── lib/
 ├── build-Debug/          # Created by configure (if Debug)
+├── build-tests/          # Created by configure --dir tests (if used)
 └── tools/                # This submodule
     ├── configure.bat
     ├── configure.sh

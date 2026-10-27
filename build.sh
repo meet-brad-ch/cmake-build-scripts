@@ -3,12 +3,16 @@
 # Wrapper around CMake build system
 #
 # Usage:
-#   ./build.sh [target] [Release|Debug]
+#   ./build.sh [target] [Release|Debug] [--dir NAME]
 #
 # Examples:
 #   ./build.sh                    # Build all targets (Release)
 #   ./build.sh <target>           # Build specific target
 #   ./build.sh all Debug          # Build everything in Debug mode
+#   ./build.sh all Release --dir tests   # Build in build-tests
+#
+# --dir NAME uses the build directory build-NAME instead of build-<type>.
+# NAME contains only letters, digits, '_', '.' and '-'.
 
 set -e  # Exit on error
 
@@ -20,18 +24,51 @@ set -e  # Exit on error
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Parse arguments
-TARGET="${1:-all}"
-BUILD_TYPE="${2:-Release}"
+# Parse arguments: the positional target and build type, and --dir NAME at any place
+POSITIONAL=()
+DIR_NAME=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dir)
+            if [[ $# -lt 2 || -z "$2" ]]; then
+                echo "Error: --dir needs a directory name"
+                exit 1
+            fi
+            DIR_NAME="$2"
+            shift 2
+            ;;
+        *)
+            POSITIONAL+=("$1")
+            shift
+            ;;
+    esac
+done
+if [[ ${#POSITIONAL[@]} -gt 2 ]]; then
+    echo "Error: Unknown argument '${POSITIONAL[2]}'"
+    echo "Usage: $0 [target] [Release|Debug] [--dir NAME]"
+    exit 1
+fi
+TARGET="${POSITIONAL[0]:-all}"
+BUILD_TYPE="${POSITIONAL[1]:-Release}"
 
 # Validate build type
 if [[ "$BUILD_TYPE" != "Release" && "$BUILD_TYPE" != "Debug" ]]; then
     echo "Error: Build type must be 'Release' or 'Debug'"
-    echo "Usage: $0 [target] [Release|Debug]"
+    echo "Usage: $0 [target] [Release|Debug] [--dir NAME]"
     exit 1
 fi
 
 BUILD_DIR="$PROJECT_ROOT/build-$BUILD_TYPE"
+CONFIGURE_HINT="./configure.sh $BUILD_TYPE"
+if [[ -n "$DIR_NAME" ]]; then
+    if [[ ! "$DIR_NAME" =~ ^[A-Za-z0-9_.-]+$ || "$DIR_NAME" == "." || "$DIR_NAME" == ".." ]]; then
+        echo "Error: Invalid --dir name '$DIR_NAME'"
+        echo "Use only letters, digits, '_', '.' and '-' (not '.' or '..')"
+        exit 1
+    fi
+    BUILD_DIR="$PROJECT_ROOT/build-$DIR_NAME"
+    CONFIGURE_HINT="./configure.sh $BUILD_TYPE --dir $DIR_NAME"
+fi
 
 # ============================================================================
 # Pre-flight Checks
@@ -42,7 +79,7 @@ if [ ! -d "$BUILD_DIR" ]; then
     echo "Error: Build directory not found: $BUILD_DIR"
     echo ""
     echo "Please run configuration first:"
-    echo "  cd tools && ./configure.sh $BUILD_TYPE"
+    echo "  cd tools && $CONFIGURE_HINT"
     exit 1
 fi
 
@@ -51,7 +88,7 @@ if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
     echo "Error: CMake configuration not found in $BUILD_DIR"
     echo ""
     echo "Please run configuration first:"
-    echo "  cd tools && ./configure.sh $BUILD_TYPE"
+    echo "  cd tools && $CONFIGURE_HINT"
     exit 1
 fi
 

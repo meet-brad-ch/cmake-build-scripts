@@ -33,6 +33,16 @@ jobs:
         working-directory: demo/tools
       - run: ./build.sh hello Debug
         working-directory: demo/tools
+      - run: ./configure.sh Release --dir tests -- -DCMAKE_VERBOSE_MAKEFILE=ON
+        working-directory: demo/tools
+      - run: ./build.sh hello Release --dir tests
+        working-directory: demo/tools
+      - run: ./demo/build-tests/hello
+      - name: An invalid --dir name fails
+        run: |
+          if ./configure.sh Release --dir ../outside; then exit 1; fi
+          if ./build.sh hello Release --dir a/b; then exit 1; fi
+        working-directory: demo/tools
 
   windows:
     runs-on: windows-latest
@@ -61,5 +71,26 @@ jobs:
         shell: cmd
         working-directory: demo/tools
       - run: build.bat hello Debug
+        shell: cmd
+        working-directory: demo/tools
+      - run: configure.bat Release Ninja --dir tests -- -DCMAKE_VERBOSE_MAKEFILE=ON
+        shell: cmd
+        working-directory: demo/tools
+      - name: The CMake arguments after -- arrive whole
+        run: findstr /c:"CMAKE_VERBOSE_MAKEFILE:BOOL=ON" demo\build-tests\CMakeCache.txt
+        shell: cmd
+      - run: build.bat hello Release --dir tests
+        shell: cmd
+        working-directory: demo/tools
+      - run: demo\build-tests\hello.exe
+        shell: cmd
+      - name: A call from outside tools finds the scripts' folder
+        run: call demo\tools\build.bat hello Release --dir tests
+        shell: cmd
+      - name: An invalid --dir name fails
+        run: |
+          call configure.bat Release Ninja --dir ..\outside && exit /b 1
+          call build.bat hello Release --dir a/b && exit /b 1
+          exit /b 0
         shell: cmd
         working-directory: demo/tools
