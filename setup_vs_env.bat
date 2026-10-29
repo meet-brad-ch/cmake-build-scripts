@@ -78,7 +78,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [setup_vs_env] Environment ready!
+REM No '!' in the messages: configure.bat and build.bat call this script with delayed expansion on, and it removes them
+echo [setup_vs_env] Environment ready
 echo [setup_vs_env] Version:   Visual Studio %VS_VERSION% %VS_EDITION%
 echo [setup_vs_env] Compiler:  %VSCMD_ARG_TGT_ARCH%
 echo [setup_vs_env] Toolset:   %VCToolsVersion%

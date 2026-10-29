@@ -48,7 +48,7 @@ Generates build files in the `build-<type>/` directory, or in `build-NAME/` with
 **Windows:**
 ```batch
 cd tools
-configure.bat [Release|Debug] [Ninja|"Visual Studio"] [--dir NAME] [-- CMAKE_ARGS...]
+configure.bat [Release|Debug] [Ninja|"Visual Studio"] [--dir NAME] [--source DIR] [-- CMAKE_ARGS...]
 ```
 
 > **Note:** run the `.bat` scripts from `cmd.exe` or PowerShell, not from Git Bash. Git Bash invokes batch files through a bridge that leaves `%~dp0` empty. The scripts then cannot find their own directory.
@@ -56,7 +56,7 @@ configure.bat [Release|Debug] [Ninja|"Visual Studio"] [--dir NAME] [-- CMAKE_ARG
 **Linux/macOS:**
 ```bash
 cd tools
-./configure.sh [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]
+./configure.sh [Release|Debug] [--dir NAME] [--source DIR] [-- CMAKE_ARGS...]
 ```
 
 **Examples:**
@@ -76,9 +76,21 @@ cd tools
 # A second build directory, build-tests, next to build-Release
 ./configure.bat Release Ninja --dir tests -- -DBUILD_TESTS=ON
 ./configure.sh Release --dir tests -- -DBUILD_TESTS=ON
+
+# An argument with a space: quote it
+./configure.bat Release Ninja -- "-DTOOL_PATH=C:/Program Files (x86)/tool"
+./configure.sh Release -- "-DTOOL_PATH=/opt/my tool"
+
+# The scripts in another folder: name the project with --source
+./configure.bat Release Ninja --source ..\third_party\library
+./configure.sh Release --source ../third_party/library
 ```
 
 `--dir NAME` gives one project several configured build directories, for example one with tests or with a sanitizer. NAME contains only letters, digits, `_`, `.` and `-`. The scripts refuse other names, because `configure.bat` and `configure.sh` remove an existing build directory before they configure (a stale `CMakeCache.txt` would keep the values of an earlier configure).
+
+`--source DIR` names the CMake project when the scripts are not in its `tools` folder, for example when one project builds a library that is its submodule. A relative DIR is relative to the current directory. The build directory is in DIR. Give the same `--source DIR` to `build.bat` or `build.sh`.
+
+Each argument after `--` reaches CMake as one argument, also when it holds a space or a parenthesis. With the Ninja generator both scripts also write `compile_commands.json`.
 
 ### Build
 
@@ -87,14 +99,16 @@ Builds the specified target.
 **Windows:**
 ```batch
 cd tools
-build.bat <target> [Release|Debug] [jobs] [--dir NAME]
+build.bat <target> [Release|Debug] [jobs] [--dir NAME] [--source DIR]
 ```
 
 **Linux/macOS:**
 ```bash
 cd tools
-./build.sh [target] [Release|Debug] [--dir NAME]
+./build.sh [target] [Release|Debug] [--dir NAME] [--source DIR]
 ```
+
+Both scripts build the given build type. With the Visual Studio generator, which keeps every configuration in one build directory, the output is in `build-<type>/<type>/`.
 
 **Examples:**
 ```bash

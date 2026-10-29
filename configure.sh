@@ -3,16 +3,20 @@
 # Cross-platform configuration for Linux and macOS
 #
 # Usage:
-#   ./configure.sh [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]
+#   ./configure.sh [Release|Debug] [--dir NAME] [--source DIR] [-- CMAKE_ARGS...]
 #
 # Examples:
 #   ./configure.sh                          # Configure Release build
 #   ./configure.sh Debug                    # Configure Debug build
 #   ./configure.sh Release -- -DFOO=ON      # Pass custom CMake flags
 #   ./configure.sh Release --dir tests -- -DBUILD_TESTS=ON   # Configure in build-tests
+#   ./configure.sh Release --source ../other -- "-DTOOL_PATH=/opt/my tool"   # Configure ../other
 #
 # --dir NAME uses the build directory build-NAME instead of build-<type>.
 # NAME contains only letters, digits, '_', '.' and '-'.
+# --source DIR is the CMake project to configure (default: the folder above this script's folder). A relative DIR is
+# relative to the current directory. The build directory is in DIR.
+# Each CMake argument after -- reaches CMake as one argument, also when it holds a space.
 #
 # This script automatically:
 #   - Configures build type (Release or Debug)
@@ -27,18 +31,19 @@ set -e  # Exit on error
 
 # Get script directory (works even when sourced or executed via symlink)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 # Parse arguments - extract build type and CMAKE_ARGS
 BUILD_TYPE="Release"
 DIR_NAME=""
-CMAKE_EXTRA_ARGS=""
+SOURCE_DIR=""
+# An array: each argument after -- stays one argument, also with a space in it
+CMAKE_EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --)
             shift
-            CMAKE_EXTRA_ARGS="$@"
+            CMAKE_EXTRA_ARGS=("$@")
             break
             ;;
         --dir)
@@ -49,17 +54,41 @@ while [[ $# -gt 0 ]]; do
             DIR_NAME="$2"
             shift 2
             ;;
+        --source)
+            if [[ $# -lt 2 || -z "$2" ]]; then
+                echo "Error: --source needs a directory"
+                exit 1
+            fi
+            SOURCE_DIR="$2"
+            shift 2
+            ;;
         Release|Debug)
             BUILD_TYPE="$1"
             shift
             ;;
         *)
             echo "Error: Unknown argument '$1'"
-            echo "Usage: $0 [Release|Debug] [--dir NAME] [-- CMAKE_ARGS...]"
+            echo "Usage: $0 [Release|Debug] [--dir NAME] [--source DIR] [-- CMAKE_ARGS...]"
             exit 1
             ;;
     esac
 done
+
+# The project: --source DIR, or the folder above this script's folder (the 'tools' layout)
+if [[ -n "$SOURCE_DIR" ]]; then
+    if [[ ! -d "$SOURCE_DIR" ]]; then
+        echo "Error: --source directory not found: $SOURCE_DIR"
+        exit 1
+    fi
+    PROJECT_ROOT="$( cd "$SOURCE_DIR" && pwd )"
+else
+    PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+fi
+if [[ ! -f "$PROJECT_ROOT/CMakeLists.txt" ]]; then
+    echo "Error: CMakeLists.txt not found in $PROJECT_ROOT"
+    echo "Give the project with --source DIR, or put this script in a 'tools' subdirectory of the project"
+    exit 1
+fi
 
 # Build directory naming. The script removes an existing build directory below,
 # so a --dir name must stay one directory below the project root.
@@ -159,8 +188,8 @@ echo "Running CMake Configuration"
 echo "========================================"
 echo ""
 
-if [ -n "$CMAKE_EXTRA_ARGS" ]; then
-    echo "Extra CMake args: $CMAKE_EXTRA_ARGS"
+if [[ ${#CMAKE_EXTRA_ARGS[@]} -gt 0 ]]; then
+    echo "Extra CMake args: ${CMAKE_EXTRA_ARGS[*]}"
     echo ""
 fi
 
@@ -170,7 +199,7 @@ cmake \
     -G "$GENERATOR" \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    $CMAKE_EXTRA_ARGS \
+    "${CMAKE_EXTRA_ARGS[@]}" \
     "$PROJECT_ROOT"
 
 # ============================================================================

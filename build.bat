@@ -11,14 +11,16 @@ REM Builds specified CMake target using Visual Studio toolchain
 REM Works with any CMake-based project - just place in a 'tools' subdirectory
 REM
 REM Usage:
-REM   build.bat <target> [build_type] [jobs] [--dir NAME]
+REM   build.bat <target> [build_type] [jobs] [--dir NAME] [--source DIR]
 REM
 REM Arguments:
-REM   target     - CMake target name (required, or "all" for everything)
-REM   build_type - Debug or Release (default: Release)
-REM   jobs       - Number of parallel jobs (default: auto-detected)
-REM   --dir NAME - Use the build directory build-NAME instead of build-<build_type>.
-REM                NAME contains only letters, digits, '_', '.' and '-'.
+REM   target       - CMake target name (required, or "all" for everything)
+REM   build_type   - Debug or Release (default: Release)
+REM   jobs         - Number of parallel jobs (default: auto-detected)
+REM   --dir NAME   - Use the build directory build-NAME instead of build-<build_type>.
+REM                  NAME contains only letters, digits, '_', '.' and '-'.
+REM   --source DIR - The CMake project that configure.bat configured with --source DIR (default: the folder above
+REM                  this script's folder). A relative DIR is relative to the current directory.
 REM
 REM Examples:
 REM   build.bat all              # Build all targets (Release)
@@ -27,13 +29,15 @@ REM   build.bat clean            # Clean build artifacts
 REM   build.bat <target> Debug    # Build in Debug mode
 REM   build.bat all Release 8    # Build with 8 parallel jobs
 REM   build.bat all Release --dir tests   # Build in build-tests
+REM   build.bat all Release --source ..\other   # Build the project ..\other
 REM ============================================================================
 
-REM Parse arguments: the positional target, build type and jobs, and --dir NAME at any place
+REM Parse arguments: the positional target, build type and jobs, and --dir NAME and --source DIR at any place
 set TARGET=
 set BUILD_TYPE=
 set JOBS=
 set DIR_NAME=
+set SOURCE_DIR=
 :parse_args
 if "%~1"=="" goto :done_parsing
 if "%~1"=="--dir" (
@@ -42,6 +46,16 @@ if "%~1"=="--dir" (
         exit /b 1
     )
     set "DIR_NAME=%~2"
+    shift
+    shift
+    goto :parse_args
+)
+if "%~1"=="--source" (
+    if "%~2"=="" (
+        echo [build] ERROR: --source needs a directory
+        exit /b 1
+    )
+    set "SOURCE_DIR=%~2"
     shift
     shift
     goto :parse_args
@@ -62,7 +76,7 @@ if not defined JOBS (
     goto :parse_args
 )
 echo [build] ERROR: Unknown argument "%~1"
-echo [build] Usage: build.bat ^<target^> [build_type] [jobs] [--dir NAME]
+echo [build] Usage: build.bat ^<target^> [build_type] [jobs] [--dir NAME] [--source DIR]
 exit /b 1
 :done_parsing
 
@@ -71,7 +85,7 @@ if not defined TARGET (
     echo.
     echo [build] ERROR: No target specified
     echo.
-    echo Usage: build.bat ^<target^> [build_type] [jobs] [--dir NAME]
+    echo Usage: build.bat ^<target^> [build_type] [jobs] [--dir NAME] [--source DIR]
     echo.
     echo Examples:
     echo   build.bat all           # Build everything
@@ -84,10 +98,16 @@ if not defined TARGET (
 if not defined BUILD_TYPE set BUILD_TYPE=Release
 if not defined JOBS set JOBS=%NUMBER_OF_PROCESSORS%
 
-REM Define paths - assumes this script is in 'tools' subdirectory
-set PROJECT_ROOT=%SCRIPT_DIR%..
-set BUILD_DIR=%PROJECT_ROOT%\build-%BUILD_TYPE%
-set CONFIGURE_HINT=configure.bat %BUILD_TYPE%
+REM Define paths: the project is --source DIR, or the folder above this script's folder (the 'tools' layout).
+REM %%~f gives the full path, so the messages show no '..'.
+if defined SOURCE_DIR (
+    for %%d in ("!SOURCE_DIR!") do set "PROJECT_ROOT=%%~fd"
+) else (
+    for %%d in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fd"
+)
+set "BUILD_DIR=%PROJECT_ROOT%\build-%BUILD_TYPE%"
+set "CONFIGURE_HINT=configure.bat %BUILD_TYPE%"
+if defined SOURCE_DIR set "CONFIGURE_HINT=!CONFIGURE_HINT! --source !PROJECT_ROOT!"
 if defined DIR_NAME (
     REM The name must stay one directory below the project root: only letters, digits, '_', '.' and '-'.
     REM Every allowed character is a delimiter, so a token remains only if another character is present.
@@ -95,19 +115,19 @@ if defined DIR_NAME (
     if "!DIR_NAME!"==".." goto :bad_dir_name
     for /f "delims=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-" %%c in ("!DIR_NAME!") do goto :bad_dir_name
     set "BUILD_DIR=%PROJECT_ROOT%\build-!DIR_NAME!"
-    set "CONFIGURE_HINT=configure.bat %BUILD_TYPE% --dir !DIR_NAME!"
+    set "CONFIGURE_HINT=!CONFIGURE_HINT! --dir !DIR_NAME!"
 )
 
-REM Check if build directory exists
+REM Check if build directory exists (the paths in the block with !...!: a parenthesis in a path must not end it)
 if not exist "%BUILD_DIR%\CMakeCache.txt" (
     echo.
     echo [build] ============================================
     echo [build] ERROR: Build directory not configured
     echo [build] ============================================
-    echo [build] Build directory: %BUILD_DIR%
+    echo [build] Build directory: !BUILD_DIR!
     echo.
     echo [build] Please run configure.bat first:
-    echo [build]   cd %SCRIPT_DIR%
+    echo [build]   cd !SCRIPT_DIR!
     echo [build]   !CONFIGURE_HINT!
     echo.
     exit /b 1
@@ -141,7 +161,9 @@ REM Build the target
 echo [build] Building...
 echo.
 
-cmake --build . --target %TARGET% -j %JOBS%
+REM --config: a Visual Studio build directory holds every configuration, and without it CMake builds the default one
+REM (Debug), not the build type. Ninja builds one configuration and ignores it. build.sh passes it too.
+cmake --build . --config %BUILD_TYPE% --target %TARGET% -j %JOBS%
 
 if errorlevel 1 (
     echo.

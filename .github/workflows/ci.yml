@@ -43,6 +43,25 @@ jobs:
           if ./configure.sh Release --dir ../outside; then exit 1; fi
           if ./build.sh hello Release --dir a/b; then exit 1; fi
         working-directory: demo/tools
+      - name: A CMake argument with a space arrives whole
+        run: |
+          ./configure.sh Release --dir quoted -- "-DDEMO_TEXT=a (b) c" -DDEMO_FLAG=ON
+          grep -q "DEMO_TEXT:UNINITIALIZED=a (b) c" ../build-quoted/CMakeCache.txt
+          grep -q "DEMO_FLAG:UNINITIALIZED=ON" ../build-quoted/CMakeCache.txt
+        working-directory: demo/tools
+      - name: --source configures and builds a project in another folder
+        run: |
+          cp -r demo/tools other
+          ./other/configure.sh Release --source demo --dir src
+          ./other/build.sh hello Release --source demo --dir src
+          test "$(./demo/build-src/hello)" = hello
+          if ./other/configure.sh Release; then exit 1; fi
+      - name: A failed build reports FAILED and its exit code
+        run: |
+          if out=$(./build.sh no_such_target Release 2>&1); then exit 1; fi
+          echo "$out" | grep -q "FAILED: Build failed for 'no_such_target'"
+          echo "$out" | grep -q "Exit code: [1-9]"
+        working-directory: demo/tools
 
   windows:
     runs-on: windows-latest
@@ -94,3 +113,29 @@ jobs:
           exit /b 0
         shell: cmd
         working-directory: demo/tools
+      - name: Ninja writes compile_commands.json
+        run: if not exist demo\build-Release\compile_commands.json exit /b 1
+        shell: cmd
+      - name: A quoted CMake argument with a space and parentheses arrives whole
+        run: |
+          call configure.bat Release Ninja --dir quoted -- "-DDEMO_TEXT=a (b) c" -DDEMO_FLAG=ON || exit /b 1
+          findstr /c:"DEMO_TEXT:UNINITIALIZED=a (b) c" ..\build-quoted\CMakeCache.txt || exit /b 1
+          findstr /c:"DEMO_FLAG:UNINITIALIZED=ON" ..\build-quoted\CMakeCache.txt || exit /b 1
+        shell: cmd
+        working-directory: demo/tools
+      - name: Visual Studio builds the requested configuration
+        run: |
+          call configure.bat Release "Visual Studio" --dir vs || exit /b 1
+          call build.bat hello Release --dir vs || exit /b 1
+          if not exist ..\build-vs\Release\hello.exe exit /b 1
+        shell: cmd
+        working-directory: demo/tools
+      - name: --source configures and builds a project in another folder
+        run: |
+          xcopy /e /i /q demo\tools other || exit /b 1
+          call other\configure.bat Release Ninja --source demo --dir src || exit /b 1
+          call other\build.bat hello Release --source demo --dir src || exit /b 1
+          demo\build-src\hello.exe || exit /b 1
+          call other\configure.bat Release Ninja && exit /b 1
+          exit /b 0
+        shell: cmd
