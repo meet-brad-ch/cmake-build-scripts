@@ -114,8 +114,20 @@ if not exist "%PROJECT_ROOT%\CMakeLists.txt" (
     exit /b 1
 )
 
+REM Remove an existing build directory, as configure.sh does: a stale CMakeCache.txt keeps the values of an earlier
+REM configure (a wrong compiler or interpreter stays cached and the new arguments do not replace it)
+if exist "%BUILD_DIR%" (
+    echo [configure] Build directory exists: %BUILD_DIR%
+    echo [configure] Removing existing build directory...
+    rmdir /s /q "%BUILD_DIR%"
+    if exist "%BUILD_DIR%" (
+        echo [configure] ERROR: Could not remove %BUILD_DIR% ^(a file in it is in use^)
+        exit /b 1
+    )
+)
+
 REM Create and enter build directory
-if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+mkdir "%BUILD_DIR%"
 cd /d "%BUILD_DIR%"
 
 REM Run CMake configuration

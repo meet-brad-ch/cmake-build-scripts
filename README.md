@@ -78,7 +78,7 @@ cd tools
 ./configure.sh Release --dir tests -- -DBUILD_TESTS=ON
 ```
 
-`--dir NAME` gives one project several configured build directories, for example one with tests or with a sanitizer. NAME contains only letters, digits, `_`, `.` and `-`. The scripts refuse other names, because `configure.sh` removes an existing build directory before it configures.
+`--dir NAME` gives one project several configured build directories, for example one with tests or with a sanitizer. NAME contains only letters, digits, `_`, `.` and `-`. The scripts refuse other names, because `configure.bat` and `configure.sh` remove an existing build directory before they configure (a stale `CMakeCache.txt` would keep the values of an earlier configure).
 
 ### Build
 
